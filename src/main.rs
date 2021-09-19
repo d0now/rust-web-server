@@ -1,7 +1,9 @@
 use clap::{Arg, App};
+
 use std::error;
 
 mod config;
+mod process;
 
 type Result<T> = std::result::Result<T, Box<dyn error::Error>>;
 
@@ -20,41 +22,37 @@ fn main() -> Result<()> {
             .takes_value(true))
         .get_matches();
 
-    let result_code;
-
     if let Some(config_path) = matches.value_of("config") {
-        result_code = init_server(config_path);
+        let cfg = match init_server(config_path) {
+            Ok(cfg) => cfg,
+            Err(err) => {
+                return Err(format!("Failed to initialize server: {}", err).into());
+            }
+        };
+        serve(&cfg)
     } else {
-        eprintln!("config not given.");
-        result_code = -1;
+        eprintln!("Somehow reasons, config not passed.");
+        Ok(())
     }
-
-    println!("Result code: {}", result_code);
-    std::process::exit(result_code)
 }
 
-fn init_server(config_path:&str) -> i32 {
+fn init_server(config_path:&str) -> Result<config::Config> {
     
     // Parse config file.
-    let cfg = match config::parse(config_path) {
-        Ok(cfg) => cfg,
-        Err(err) => {
-            eprintln!("Can't parse config: {}", err);
-            return -1;
-        }
-    };
+    let cfg = config::parse(config_path)?;
 
     // Check config file.
     if let Err(err) = cfg.check() {
-        eprintln!("Invalid config: {}", err);
-        return -1;
+        return Err(format!("Invalid config: {}", err).into());
     }
 
     // Fork here.
     // Not implemented yet.
 
-    // Loop here.
-    // Not implemented yet.
+    Ok(cfg)
+}
 
-    return 0;
+fn serve(cfg: &config::Config) -> Result<()> {
+    let listener = process::bind_server(cfg)?;
+    process::process(cfg, listener)
 }

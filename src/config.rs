@@ -25,6 +25,8 @@ impl Config {
 
     pub fn check(&self) -> Result<()> {
 
+        // TODO: Check type of each keys.
+
         let category = "Server";
         let keys = ["Host", "Port"];
 
@@ -35,6 +37,13 @@ impl Config {
         }
 
         return Ok(());
+    }
+
+    pub fn chk_get(&self, category: &str, key: &str) -> String {
+        match self.parser.get(category, key) {
+            Some(value) => value,
+            None => panic!("Can't get config {}.{}", category, key)
+        }
     }
 
 }
