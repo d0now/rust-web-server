@@ -4,6 +4,7 @@ use std::error;
 
 mod config;
 mod process;
+mod request;
 
 type Result<T> = std::result::Result<T, Box<dyn error::Error>>;
 
@@ -29,7 +30,7 @@ fn main() -> Result<()> {
                 return Err(format!("Failed to initialize server: {}", err).into());
             }
         };
-        serve(&cfg)
+        serve(cfg)
     } else {
         eprintln!("Somehow reasons, config not passed.");
         Ok(())
@@ -52,7 +53,7 @@ fn init_server(config_path:&str) -> Result<config::Config> {
     Ok(cfg)
 }
 
-fn serve(cfg: &config::Config) -> Result<()> {
-    let listener = process::bind_server(cfg)?;
+fn serve(cfg: config::Config) -> Result<()> {
+    let listener = process::bind_server(&cfg)?;
     process::process(cfg, listener)
 }

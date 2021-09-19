@@ -1,7 +1,11 @@
 use tokio::net::TcpListener;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::io::AsyncWriteExt;
+
+use std::sync::Arc;
 
 use crate::config;
+use crate::request;
+
 use crate::Result;
 
 pub fn bind_server(cfg: &config::Config) -> Result<std::net::TcpListener> {
@@ -16,13 +20,20 @@ pub fn bind_server(cfg: &config::Config) -> Result<std::net::TcpListener> {
 }
 
 #[tokio::main]
-pub async fn process(cfg: &config::Config, std_listener: std::net::TcpListener) -> Result<()> {
+pub async fn process(cfg: config::Config, std_listener: std::net::TcpListener) -> Result<()> {
+
+    let cfg = Arc::new(cfg);
 
     let listener = TcpListener::from_std(std_listener)?;
 
     loop {
         let (mut client_stream, client_addr) = listener.accept().await?;
-        println!("Connected: {}", client_addr.to_string());
-        client_stream.shutdown().await?;
+        let cfg = Arc::clone(&cfg);
+        tokio::spawn(async move {
+            if let Err(e) = request::process_requests(cfg, &mut client_stream, client_addr).await {
+                eprintln!("Error occurred while processing request: {}", e);
+            }
+            client_stream.shutdown();
+        });
     }
 }
